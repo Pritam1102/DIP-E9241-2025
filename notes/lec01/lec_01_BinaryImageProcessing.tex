@@ -536,6 +536,163 @@ For a given threshold $T$:
 \end{align*}
 \end{itemize}
 
+\dfn{Within Class Variance $\sigma_w^2(T)$}{
+  The variance of pixel intensities within class is given by:
+  \begin{align*}
+  \sigma_w^2(T) &= \omega_0(T) \sigma_0^2(T) + \omega_1(T) \sigma_1^2(T)
+  \end{align*}
+
+  Also known as intra-class variance, $\sigma_w^2(T)$ measures the compactness of pixel intensities within each class. \textbf{maximizing} $\sigma_w^2(T)$ leads to better class separability.
+}
+
+\dfn{Between Class Variance $\sigma_b^2(T)$}{
+  The variance of pixel intensities between class is given by:
+  \begin{align*}
+  \sigma_b^2(T) &= \sigma^2 - \sigma_w^2(T) \\
+  &= \sigma^2 - \left( \omega_0(T) \sigma_0^2(T) + \omega_1(T) \sigma_1^2(T) \right)\\
+  &= \omega_0(T) \omega_1(T) \left[ \mu_0(T) - \mu_1(T) \right]^2
+  \end{align*}
+
+  Also known as inter-class variance, $\sigma_b^2(T)$ measures the separability of pixel intensities between classes. \textbf{minimizing} $\sigma_w^2(T)$ leads to better class compactness.
+}
+
 \subsection{Otsu’s Binarization: Statement and Algorithm}
 
 \dfn{Otsu’s Binarization}{The process of determining the threshold $T^*$ that maximizes the inter-class variance between foreground and background, thus optimally segmenting a bimodal histogram image.}
+
+\begin{center}
+\begin{tikzpicture}[scale=1.2]
+    % Axis
+    \draw[->] (0,0) -- (5,0) node[right] {Intensity};
+    \draw[->] (0,0) -- (0,3) node[above] {Histogram};
+    % Bimodal histogram
+    \draw[domain=0.3:2.3,smooth,variable=\x,blue,thick] plot (\x,{2*exp(-2*(\x-1)^2)});
+    \draw[domain=2.7:4.7,smooth,variable=\x,red,thick] plot (\x,{2*exp(-2*(\x-4)^2)});
+    % Threshold line at T
+    \draw[dashed] (2.5,0) -- (2.5,2) node[above] {$T^*$};
+\end{tikzpicture}
+
+\textit{A typical bimodal histogram: $T^*$ chosen to best separate two peaks.}
+\end{center}
+
+\paragraph{Optimization Criteria}
+
+Otsu’s method selects a threshold $T^*$ to partition the image pixels into two classes (often foreground and background) so that the variance between these classes (\textbf{inter-class variance}) is maximized, or equivalently, the variance within each class (\textbf{intra-class variance}) is minimized. These criteria are mathematically dual—maximizing $\sigma_b^2(T)$ is identical to minimizing $\sigma_w^2(T)$ since their sum is the total variance $\sigma^2$.
+
+\clm{Equivalence of Maximization and Minimization Criteria}{}{
+Maximizing the between-class variance $\sigma_b^2(T)$ is equivalent to minimizing within-class variance $\sigma_w^2(T)$, as
+\[
+\arg\max_T \sigma_b^2(T) = \arg\min_T \sigma_w^2(T)
+\]
+since $\sigma^2$ is fixed for a given image histogram.
+}
+\nt{In practice, Otsu's method typically maximizes $\sigma_b^2(T)$, but formulations based on minimizing $\sigma_w^2(T)$ yield the same optimal threshold $T^*$.}
+
+\subsection{Method 1: Maximization of Inter-Class Variance}
+
+Threshold $T^*$ is selected to maximize the between-class variance $\sigma_b^2(T)$.
+$$
+  T^* = \arg\max_T \sigma_b^2(T) = \arg\max_T \left[ \omega_0(T) \omega_1(T) \left( \mu_0(T) - \mu_1(T) \right)^2 \right]
+$$
+
+\noindent The algorithm for Otsu's binarization by maximizing $\sigma_b^2(T)$ is as follows:
+
+\begin{enumerate}
+    \item Compute the histogram and probabilities $p_i = n_i/N$ for each gray level $i$.
+    \item For each possible threshold $T$ (from gray level $1$ to $L-2$):
+    \begin{itemize}
+        \item Calculate class weights (probabilities): $\omega_0(T)$ and $\omega_1(T)$.
+        \item Calculate class means: $\mu_0(T)$ and $\mu_1(T)$.
+        \item Compute between-class variance:
+            \[
+            \sigma_b^2(T) = \omega_0(T)\,\omega_1(T)\left[\mu_0(T) - \mu_1(T)\right]^2
+            \]
+    \end{itemize}
+    \item Find the threshold $T^*$ that maximizes $\sigma_b^2(T)$.
+\end{enumerate}
+
+\ex{Numerical Example}{
+Suppose an image has normalized histogram values:
+$
+p_0 = 0.4, \quad p_1 = 0.2, \quad p_2 = 0.2, \quad p_3 = 0.2
+$
+Try threshold $T = 1$:
+\begin{align*}
+\omega_0(1) &= p_0 + p_1 = 0.6\\
+\omega_1(1) &= 0.4\\
+\mu_0(1) &= \frac{0 \cdot 0.4 + 1 \cdot 0.2}{0.6} = 0.333\\
+\mu_1(1) &= \frac{2 \cdot 0.2 + 3 \cdot 0.2}{0.4} = 2.5
+\end{align*}
+Now,
+\[
+\sigma_b^2(1) = 0.6 \times 0.4 \times (0.333 - 2.5)^2 \approx 0.6 \times 0.4 \times 4.694 \approx 1.126
+\]
+similarly for $T=2$:
+\begin{align*}
+\omega_0(2) &= p_0 + p_1 +p_2 = 0.8\\
+\omega_1(2) &= 0.2\\
+\mu_0(2) &= \frac{0 \cdot 0.4 + 1 \cdot 0.2 + 2 \cdot 0.2}{0.8} = 0.75\\
+\mu_1(2) &= \frac{3 \cdot 0.2}{0.2} = 3
+\end{align*}
+Now,
+\[
+\sigma_b^2(2) = 0.8 \times 0.2 \times (0.75 - 3)^2 \approx 0.8 \times 0.2 \times 5.0625 \approx 0.81
+\]
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{c|c|c|c|c|c}
+\toprule
+$T$ & $\omega_0(T)$ & $\omega_1(T)$ & $\mu_0(T)$ & $\mu_1(T)$ & $\sigma_b^2(T)$ \\
+\midrule
+1 & 0.6 & 0.4 & 0.3333 & 2.5 & \textbf{1.1267} \\
+2 & 0.8 & 0.2 & 0.75 & 3 & 0.81 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\boxed{\text{Maximum } \sigma_b^2 \text{ occurs at } T=1, \quad
+\sigma_b^2(1)\approx \mathbf{1.1267}.}
+\]
+
+}
+
+\subsection{Method 2: Minimization of Within-Class Variance}
+
+Threshold $T^*$ is selected to minimize the within-class variance $\sigma_w^2(T)$.
+$$
+  T^* = \arg\min_T \sigma_w^2(T) = \arg\min_T \left[ \omega_0(T) \sigma_0^2(T) + \omega_1(T) \sigma_1^2(T) \right]
+$$
+
+\noindent This approach explicitly minimizes intra-class variance $\sigma_w^2(T)$.
+
+\begin{enumerate}
+    \item For each threshold $T$, calculate:
+    \begin{align*}
+        \sigma_w^2(T) = \omega_0(T) \sigma_0^2(T) + \omega_1(T) \sigma_1^2(T)
+    \end{align*}
+    where $\sigma_k^2(T)$ are variances for classes $k=0,1$, based on histogram statistics within each class.
+    \item Find $T^*$ that minimizes $\sigma_w^2(T)$.
+\end{enumerate}
+
+\clm{Proof of Equivalence}{}{
+Since $\sigma^2 = \sigma_w^2(T) + \sigma_b^2(T)$ for all $T$, maximizing $\sigma_b^2(T)$ is the same as minimizing $\sigma_w^2(T)$.
+}
+\nt{For both criteria, iterate over possible $T$ to find the optimal value. Both algorithms yield identical results provided all statistics are computed correctly.}
+
+\subsection{Algorithm Summary: Otsu’s Binarization (most used)}
+
+\begin{enumerate}
+    \item Compute image histogram.
+    \item For each threshold $T$:
+    \begin{itemize}
+        \item Partition pixels into two classes.
+        \item Compute $\omega_k(T)$, $\mu_k(T)$, $\sigma_k^2(T)$ as needed.
+        \item Compute either $\sigma_b^2(T)$ or $\sigma_w^2(T)$.
+    \end{itemize}
+    \item Determine $T^*$ by maximizing $\sigma_b^2(T)$ or minimizing $\sigma_w^2(T)$.
+    \item Binarize the image: pixels $\leq T^*$ are assigned to class 0; others to class 1.
+\end{enumerate}
+
+\nt{Otsu’s method is most effective for bimodal histograms, but may be suboptimal for multi-modal or unimodal histograms. Variations and generalizations (multi-level, local thresholding) exist for more complex cases.}
