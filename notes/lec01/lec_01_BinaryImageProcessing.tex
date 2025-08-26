@@ -1019,3 +1019,209 @@ R_{\text{final}}=
 \nt{
 Correctly extracting connected components is crucial for counting objects, segmenting regions, and preparing for further analysis such as shape feature extraction.
 }
+
+
+\section{Binary Image Filters}
+
+Binary images require specialized filtering techniques to process and enhance them, typically via mathematical morphology.
+
+\subsection{Window}
+
+A \textbf{window} or \textbf{kernel} in filtering is a small submatrix (usually square, e.g., $3 \times 3$) that moves systematically over the image, determining how each pixel should be transformed based on its neighborhood.
+
+\subsubsection{1D Window}
+
+In 1D signals, a window is a segment of the signal used for processing. For example, a $3$-point window might include samples $x[m, n-1], x[m, n], x[m, n+1]$ for a row window and $x[m-1, n], x[m, n], x[m+1, n]$ for a column window.
+
+\begin{center}
+\begin{tikzpicture}[scale=1.2]
+% Draw 3x3 grid
+\foreach \x in {0,1,2}
+  \foreach \y in {0,1,2}
+    \draw[gray!50] (\x,\y) rectangle ++(1,1);
+
+% Row window: highlight center row
+\foreach \x in {0,1,2}
+  \fill[blue!30] (\x,1) rectangle ++(1,1);
+
+% Mark center pixel
+\fill[blue!60] (1,1) rectangle ++(1,1);
+\node at (1.5,1.5) {\textcolor{white}{P}};
+
+% Row window label
+\node[below] at (1.5,-0.2) {Row Window};
+
+\end{tikzpicture}
+\hspace{1cm}
+\begin{tikzpicture}[scale=1.2]
+% Draw 3x3 grid
+\foreach \x in {0,1,2}
+  \foreach \y in {0,1,2}
+    \draw[gray!50] (\x,\y) rectangle ++(1,1);
+
+% Column window: highlight center column
+\foreach \y in {0,1,2}
+  \fill[red!30] (1,\y) rectangle ++(1,1);
+
+% Mark center pixel
+\fill[red!60] (1,1) rectangle ++(1,1);
+\node at (1.5,1.5) {\textcolor{white}{P}};
+
+% Column window label
+\node[below] at (1.5,-0.2) {Column Window};
+
+\end{tikzpicture}
+\end{center}
+
+\subsubsection{2D Window}
+
+Windows are mostly non-casual, means pixels can be influenced by their neighbors in both dimensions. A window can be defined as a rectangular region centered around a pixel, encompassing its surrounding pixels. 
+
+Few shapes include square, Cross, circle, diamond, etc.
+
+\paragraph{Common Window Shapes}
+\begin{center}
+\begin{tabular}{cc}
+\textbf{Square} &
+\textbf{Cross}  \\
+% Square window
+\begin{tikzpicture}
+\foreach \x in {0,1,2}
+  \foreach \y in {0,1,2}
+    \draw[gray!60] (\x,\y) rectangle ++(1,1);
+\foreach \x in {0,1,2}
+  \foreach \y in {0,1,2}
+    \fill[blue!40] (\x,\y) rectangle ++(1,1);
+\end{tikzpicture}
+&
+% Cross window
+\begin{tikzpicture}
+\foreach \x in {0,1,2}
+  \foreach \y in {0,1,2}
+    \draw[gray!60] (\x,\y) rectangle ++(1,1);
+\foreach \i in {0,1,2}
+  \fill[red!40] (1,\i) rectangle ++(1,1);
+\foreach \i in {0,1,2}
+  \fill[red!40] (\i,1) rectangle ++(1,1);
+\end{tikzpicture}
+\end{tabular}
+\end{center}
+
+\subsection{Binary Morphology}
+
+A set of techniques used in image processing for analyzing and processing binary images based on shapes. It involves operations that probe and transform the structure of objects in the image using a defined window (structuring element).
+
+\paragraph{Window Notation}
+Let,
+\[
+B_i = (p_i, q_i) \quad \text{s.t.} \quad (p_i, q_i) \in B 
+\]
+
+then, A window is given as, 
+
+\[
+B = \{ B_1, B_2, B_3, \dots, B_{2p+1} \}
+\]
+
+\ex{Window Example}{
+Consider a ROW window with $p$ pixels centered at $(0,0)$:
+\[
+\text{ROW}(2p+1) = \{(-p,0), (-p+1,0), \ldots, (0,0), \ldots, (p-1,0), (p,0)\}
+\]
+
+Consider a SQUARE $3 \times 3$ window centered at pixel $(0,0)$:
+\[
+\text{SQUARE}(9) = \{(-1,-1), (-1,0), (-1,1), (0,-1), (0,0), (0,1), (1,-1), (1,0), (1,1)\}
+\]
+}
+
+\paragraph{Window Set} Given a image I and a Window B, the window set is given as 
+\[
+B \downarrow I(i,j) = \{I(i +p, j+q) | (p,q) \in B\}
+\]
+
+
+\subsection{Image Edges and Window Boundaries}
+
+Applying filters near image edges requires care, as the window may extend outside the image domain. Strategies include:
+\begin{itemize}
+    \item \textbf{Padding:} Extend image with zeros or mirrored edges.
+    \item \textbf{Ignore:} Only process central pixels with complete neighborhoods.
+    \item \textbf{Wrap-around:} For mathematical convenience (rare in practice).
+\end{itemize}
+
+\subsection{Binary Filter}
+
+\dfn{Binary Filter}{A transformation applied to a binary image using a specified window (kernel), resulting in output pixels determined by logical operations (AND, OR, etc.) on the neighborhood.}
+
+\noindent Let G be a binary operation on a windowed set, then the binary filtered image is given as:
+\[
+J(i,j) = G(B \downarrow I(i,j)) \qquad \forall (i,j) \in I
+\]
+
+
+\nt{In morphological operations, careful handling of edges is necessary to avoid artifacts such as unwanted erosion or dilation at the image boundaries.}
+
+\subsubsection{Fundamental Morphological Operations}
+
+Mathematical morphology operates using set theory to process shapes in binary images. The two core operations are \textbf{dilation} and \textbf{erosion}, with further derived operations.
+
+\dfn{Dilation}{For a binary image $I$ and structuring element $B$, the dilation $ J = \text{DILATE}(I,B) = I \oplus B$ is defined as:
+$$
+J(i,j) = OR \{ B \downarrow I(i,j) \}
+$$
+
+where $$OR\{x_1, x_2, \ldots, x_n\} = \bigvee_{k} x_k = x_1 +x2 + \ldots +x_n = \text{max}(x_1, x_2, \ldots, x_n)$$ is the logical OR operation or the Maximum pixel value picker over the set.
+}
+
+\dfn{Erosion}{For a binary image $I$ and structuring element $B$, the erosion $J = \text{ERODE}(I,B) = I \ominus B$ is:
+$$
+J(i,j) = AND \{ B \downarrow I(i,j) \}
+$$
+
+where $$AND\{x_1, x_2, \ldots, x_n\} = \bigwedge_{k} x_k = x_1 \cdot x_2 \cdot \ldots \cdot x_n = \text{min}(x_1, x_2, \ldots, x_n)$$ is the logical AND operation or the Minimum pixel value picker over the set.
+}
+
+\paragraph{Algorithmic Steps for binary image}
+\begin{itemize}
+    \item \textbf{Dilation:} For each pixel, if any neighbor within $B$ is foreground, set pixel to 1.
+    \item \textbf{Erosion:} For each pixel, if all neighbors within $B$ are foreground, set pixel to 1; else 0.
+\end{itemize}
+
+\nt{Dilation expands object boundaries, while erosion shrinks them. The choice of structuring element $B$ (shape and size) significantly affects the outcome.}
+
+\subsubsection{Duals}
+Dilation and erosion are dual operations in mathematical morphology. This means that the dilation of the complement of an image is equal to the complement of the erosion of the image:
+$$
+\text{DILATE}(I^c, B) = (\text{ERODE}(I, B))^c
+$$
+where $I^c$ is the complement of the image $I$.
+
+This comes straight from the definitions of dilation and erosion, as the operations are fundamentally linked through the concept of set complementation, i.e., $\bar{(x_1 + x_2)} = \bar{x_1} \cdot \bar{x_2}$.
+
+\subsubsection{Derived Morphological Operations}
+
+\paragraph{Majority Filter}
+The majority filter is a simple yet effective morphological operation used to remove noise from binary images. It works by replacing each pixel's value with the majority value of its neighbors within a specified window. 
+\[
+J(i,j) = \text{MAJORITY} \{ B \downarrow I(i,j) \}
+\]
+This can help to smooth out small irregularities in the image.
+
+\paragraph{Boundary Detection}
+
+The boundary of objects in a binary image can be extracted as:
+$$
+\text{Boundary}(I) = \text{XOR}\{I, \text{ERODE}(I,B)\}
+$$
+
+
+\clm{Morphological Property}{}{
+  \begin{itemize}
+    \item Dilation expands, erosion shrinks, and their combinations (opening, closing) provide sophisticated noise removal and shape manipulation.
+    \item Morphological operations are inherently non-linear, making them robust to noise and variations in object shape.
+    \item Majority filter effectively reduces salt-and-pepper noise by enforcing local consistency.
+    \item Boundary detection highlights object edges, aiding in shape analysis and recognition.
+  \end{itemize}
+}
+
