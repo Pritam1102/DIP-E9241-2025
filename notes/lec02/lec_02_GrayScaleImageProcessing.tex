@@ -1,0 +1,150 @@
+% !TEX root=./../maha-dip-notes.tex
+\chapter{Gray Scale Image Processing}
+
+\section{Point Operations}
+
+Point operations are image transformations where each output pixel is computed solely from its corresponding input pixel, without regard for neighboring values.
+
+\dfn{Point Operation}{A transformation applied to each pixel individually, $J(x,y) = T[I(x, y)]$, where $I(x, y)$ is the input image and $T$ is a point-wise mapping function.}
+
+These operations can be linear or non-linear, and are different from local operators/spatial filters (i.e., those that consider neighboring pixels such as ERODE, DILATE, etc.).
+
+No explicit neighborhood information is used in point operations, and no explicit modifications based on spatial context. however, they can still be influenced by global image properties (e.g., overall brightness, contrast).
+
+
+
+\subsection{Image Offset (Brightness Adjustment)}
+The simplest point operation is the offset, where a constant value $c$ is added to all pixel intensities:
+$$
+J(x, y) = I(x, y) + c
+$$
+This increases (or decreases) the brightness of the image uniformly.
+\begin{itemize}
+    \item If $c > 0$, the image becomes brighter.
+    \item If $c < 0$, the image becomes darker.
+\end{itemize}
+
+\ex{Image Offset Application}{
+    Suppose $I_1,I_2,\dots, I_N$ are $N$ images of the same scene taken under different lighting conditions (different exposures). If we wish to equalise all their average intensities to $\frac{K}{2}$ (where K is number of intensity levels), a point operation can be used to normalize brightness across these images by applying an offset to each image:
+    $$J_i(x, y) = I_i(x, y) + c_i$$
+    where $c_i$ is the offset computed as:
+    $$c_i = \frac{K}{2} - \text{mean}(I_i)$$
+}
+
+\subsection{Image Scaling (Contrast Adjustment)}
+Image scaling multiplies all pixel intensities by a constant factor $a$:
+$$
+J(x, y) = a \cdot I(x, y)
+$$
+A scaling factor $a > 1$ increases contrast, while $0 < a < 1$ darkens the image.
+
+
+\subsection{Offset and Scaling}
+Combining offset and scaling operations allows for more flexible image adjustments. The combined operation can be expressed as:
+$$
+J(x, y) = a \cdot I(x, y) + c
+$$
+Where $a$ is the scaling factor and $c$ is the offset. This allows for both contrast adjustment (via scaling) and brightness adjustment (via offset) in a single operation.
+
+\ex{Negative Image}{
+    The negative of an image is obtained by inverting the pixel values by choosing :
+    \begin{itemize}
+        \item image offset  $c = K - 1$, Where $K$ is the number of intensity levels.
+        \item image scaling $a = -1$
+    \end{itemize}
+    Thus,
+    $$
+    J(x, y) = K - 1 - I(x, y)
+    $$
+    This operation effectively reverses the brightness levels, making dark areas light and vice versa.
+}
+
+\ex{Full Scale Contrast stretch}{
+    Let A \& B be the minimum and maximum intensity values in the image respectively. We wish to stretch the contrast to full scale $[0, K-1]$. This can be achieved from $aA + c = 0$ and $aB + c = K - 1$, we can solve for $a$ and $c$, we get:
+    \begin{itemize}
+        \item image scaling $a = \frac{K-1}{B-A}$
+        \item image offset  $c = -\frac{K-1}{B-A} \cdot A$
+    \end{itemize}
+    Thus,
+    \begin{align*}
+    J(x, y) &= \frac{K-1}{B-A} \cdot I(x, y) - \frac{K-1}{B-A} \cdot A\\
+    &= \frac{K-1}{B-A} \cdot (I(x, y) - A)
+    \end{align*}
+    This allows us to stretch the pixel values to cover the full range of intensities, hence enhances the overall contrast of the image.
+}
+
+\subsection{Non-linear Point Operations}
+Non-linear point operations are techniques that apply non-linear transformations to the pixel values of an image. These operations can enhance certain features or suppress others, depending on the specific transformation applied.
+
+\paragraph{Common Examples}
+\begin{itemize}
+    
+    \item \textbf{Gamma Correction:}
+        $$
+        J(x, y) = c \cdot I(x, y)^\gamma \qquad \gamma > 0
+        $$
+        Where $c$ is a scaling factor and $\gamma$ is the gamma value.
+        \begin{itemize}
+            \item $0 < \gamma < 1$ : Enhances dark regions (gamma correction).
+            \item $\gamma > 1$ : Enhances bright regions (inverse gamma correction).
+        \end{itemize}
+
+        \begin{center}
+        \begin{tikzpicture}
+            \draw[->] (0,0) -- (5,0) node[right] {Input Intensity};
+            \draw[->] (0,0) -- (0,5) node[above] {Output};
+            \draw[domain=0:5,smooth,variable=\x,blue,thick] plot (\x,{pow(\x/5,0.5)*5});
+            \draw[domain=0:5,smooth,variable=\x,red,dashed] plot (\x,{pow(\x/5,2)*5});
+            % Two gamma curves: gamma=0.5 (blue, boost), gamma=2 (red, dampen)
+        \end{tikzpicture}
+        \\
+        \emph{Gamma Correction ( Blue : $\gamma = 0.5 \rightarrow I^{\frac{1}{2}}$  , Red : $\gamma = 2 \rightarrow I^{2}$ )}
+        \end{center}
+
+    \item \textbf{Sigmoid Correction:}
+        $$
+        J(x, y) = \frac{K}{1 + \exp(-\beta [I(x, y) - \alpha])}
+        $$
+        Where $K$ is maximal intensity, $\alpha$ the mid-point, and $\beta$ the slope. Useful for contrast enhancement around a chosen intensity.
+
+        \begin{center}
+        \begin{tikzpicture}
+            \draw[->] (0,0) -- (5,0) node[right] {Input Intensity};
+            \draw[->] (0,0) -- (0,5) node[above] {Output};
+            \draw[domain=0:5,smooth,variable=\x,blue,thick] plot (\x,{5/(1 + exp(-9*(\x/5-0.5)))});
+            % Sigmoid curve: midpoint at 0.5, slope=9
+        \end{tikzpicture}
+        \\
+        \emph{Sigmoid Correction Curve}
+        \end{center}
+
+
+    \item \textbf{Other Non-linear Operations:}
+        \begin{itemize}
+            \item \emph{Logarithmic Correction:} $g(x, y) = c \cdot \log(1 + f(x, y))$
+            \item \emph{Exponential Correction:} $g(x, y) = a \cdot \exp(f(x, y)/b)$
+            \item \emph{Piece-wise Linear Transformations:} used for specific intensity mapping (e.g., contrast stretching).
+        \end{itemize}
+\end{itemize}
+
+
+
+\nt{Non-linear point operations are often employed to address unique characteristics of image acquisition (camera response, display systems) or to prepare images for further processing steps like thresholding or segmentation.}
+
+
+
+\section{Histogram Equalization}
+
+Histogram equalization is a method to adjust image intensities to enhance contrast. The histogram of an image is "flattened" (equalized), redistributing pixel values as uniformly as possible over the intensity range.
+
+\dfn{Histogram Equalization}{A point-wise image transformation that remaps the intensity distribution so that the output histogram is (approximately) uniform. This increases the dynamic range and enhances global contrast.}
+
+\noindent Given a gray scale image with intensities $r$ in $[0, K-1]$ and histogram $h(r)$, histogram equalization computes a transformation $HE$ as the cumulative distribution function (CDF):
+$$
+HE(r) = \sum_{k=0}^{r} \frac{h(k)}{MN}
+$$
+where $MN$ is the total number of pixels.
+
+\dfn{Histogram Equalization Transformation}{
+The transformation $s = HE(r)$ maps each input intensity $r$ to an output intensity $s$ so that $s$ is approximately uniformly distributed over $[0, K-1]$.
+}
